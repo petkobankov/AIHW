@@ -212,7 +212,7 @@ class Hw1 {
     }
 }
 
-public class Test {
+public class NPuzzle {
 
     public static void main(String[] args) {
         Hw1 hw1 = new Hw1();
