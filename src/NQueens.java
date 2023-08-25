@@ -88,7 +88,7 @@ class Hw2{
         return maxConflictCols.get(pickRandom(0, maxConflictCols.size()-1));
     }
 
-    private int pickRandom(int min, int max){
+    public static int pickRandom(int min, int max){
         return (int) (Math.random() * (max - min + 1) + min);
     }
 
