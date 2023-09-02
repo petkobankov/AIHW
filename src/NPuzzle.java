@@ -1,6 +1,7 @@
 import java.util.*;
 
 class Node {
+    static final int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
     int[] matrix;
     int distance = 0;
     int zeroX;
@@ -24,32 +25,15 @@ class Node {
         this.pathToTheNode += ", " + moveDirection;
     }
 
-    public Node(int[] startingMatrix, int zeroX, int zeroY, String pathToTheNode){
-        this.matrix = new int[Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION];
-        for (int i = 0; i < Hw1.MATRIX_DIMENSION; i++){
-            for (int j = 0; j < Hw1.MATRIX_DIMENSION; j++){
-                this.matrix[Hw1.twoDtoOneD(i,j)] = startingMatrix[Hw1.twoDtoOneD(i,j)];
-            }
-        }
-        this.manhattanDistance = getManhattanDistance();
+    public Node(){
         this.distance = 0;
-        this.zeroX = zeroX;
-        this.zeroY = zeroY;
-        this.pathToTheNode = pathToTheNode;
+        this.pathToTheNode = "";
     }
-    private int getManhattanDistance() {
+    public int getManhattanDistance() {
         int sum = 0;
         for (int i = 0; i < Hw1.MATRIX_DIMENSION; i++) {
             for (int j = 0; j < Hw1.MATRIX_DIMENSION; j++) {
-                int value = matrix[Hw1.twoDtoOneD(i,j)];
-                int targetRow = (value - 1) / Hw1.MATRIX_DIMENSION;
-                int targetCol = (value - 1) % Hw1.MATRIX_DIMENSION;
-                if(value==0){
-                    targetRow = Hw1.MATRIX_DIMENSION-1;
-                    targetCol = Hw1.MATRIX_DIMENSION-1;
-                }
-
-                sum += Math.abs(i - targetRow) + Math.abs(j - targetCol);
+                sum += getManhattanDistanceCell(i,j);
             }
         }
         return sum;
@@ -57,13 +41,15 @@ class Node {
 
     private int getManhattanDistanceCell(int row, int column) {
         int value = matrix[Hw1.twoDtoOneD(row,column)];
+        if(row>Hw1.zeroXgoal || (row==Hw1.zeroXgoal && column > Hw1.zeroYgoal)){
+            value++;
+        }
         int targetRow = (value - 1) / Hw1.MATRIX_DIMENSION;
         int targetCol = (value - 1) % Hw1.MATRIX_DIMENSION;
-        if(value==0){
-            targetRow = Hw1.MATRIX_DIMENSION-1;
-            targetCol = Hw1.MATRIX_DIMENSION-1;
+        if(matrix[Hw1.twoDtoOneD(row,column)] == 0){
+            targetRow = Hw1.zeroXgoal;
+            targetCol = Hw1.zeroYgoal;
         }
-
         return Math.abs(row - targetRow) + Math.abs(column - targetCol);
     }
     public PriorityQueue<Node> successors() {
@@ -75,7 +61,7 @@ class Node {
                 return Integer.compare(f1, f2);
             }
         });
-        int[][] directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
         for (int i = 0; i < 4; i++){
             int newZeroX = zeroX + directions[i][0];
             int newZeroY = zeroY + directions[i][1];
@@ -114,26 +100,35 @@ class Hw1 {
     private Node startingNode;
     private int[] board;
     private Set<Node> visitedNodes = new HashSet<>();
+    public static int zeroXgoal;
+    public static int zeroYgoal;
+    HashSet<String> uniqueStates;
+    Node lastNode;
 
     public void getInput() {
         Scanner sc = new Scanner(System.in);
         N = sc.nextInt() + 1;
-        int zeroPosition = sc.nextInt();
         MATRIX_DIMENSION = (int) Math.sqrt(N);
-        int[] startingNodeMatrix = new int[Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION];
+        int zeroPosition = sc.nextInt();
+        zeroXgoal = oneDtoTwoD(N-1)[0];
+        zeroYgoal = oneDtoTwoD(N-1)[1];
+        if (zeroPosition != -1) {
+            zeroXgoal = oneDtoTwoD(zeroPosition)[0];
+            zeroYgoal = oneDtoTwoD(zeroPosition)[1];
+        }
+        startingNode = new Node();
+        startingNode.matrix = new int[Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION];
         board = new int[N];
         for (int i = 0; i < N; i++) {
             int currentPuzzleNumber = sc.nextInt();
-//            int row = oneDtoTwoD(i)[0];
-//            int col = oneDtoTwoD(i)[1];
-            startingNodeMatrix[i] = currentPuzzleNumber;
+            if(currentPuzzleNumber==0){
+                startingNode.zeroX = oneDtoTwoD(i)[0];
+                startingNode.zeroY = oneDtoTwoD(i)[1];
+            }
+            startingNode.matrix[i] = currentPuzzleNumber;
             board[i] = currentPuzzleNumber;
         }
-        startingNode = new Node(startingNodeMatrix,oneDtoTwoD(N-1)[0], oneDtoTwoD(N-1)[1], "");
-        if (zeroPosition != -1) {
-            startingNode.zeroX = oneDtoTwoD(zeroPosition)[0];
-            startingNode.zeroY = oneDtoTwoD(zeroPosition)[1];
-        }
+        startingNode.manhattanDistance = startingNode.getManhattanDistance();
     }
 
     public static int[] oneDtoTwoD(int position) {
@@ -150,13 +145,11 @@ class Hw1 {
 
     public Node ida_star() {
         int bound = startingNode.manhattanDistance;
-        Stack<Node> path = new Stack<>();
-        path.push(startingNode);
         visitedNodes.add(startingNode);
         while (true) {
-            int t = search(path, 0, bound);
+            int t = search(startingNode, 0, bound);
             if (t == FOUND) {
-                return path.pop();
+                return lastNode;
             }
             if (t == Integer.MAX_VALUE) {
                 return null;
@@ -165,32 +158,30 @@ class Hw1 {
         }
     }
 
-    private int search(Stack<Node> path, int g, int bound) {
-        Node node = path.peek();
-        int f = g + node.manhattanDistance;
+    private int search(Node currentNode, int g, int bound) {
+        int f = g + currentNode.manhattanDistance;
         if (f > bound) {
             return f;
         }
-        if (node.manhattanDistance==0) {
+        if (currentNode.manhattanDistance==0) {
+            lastNode=currentNode;
             return FOUND;
         }
         int min = Integer.MAX_VALUE;
-        PriorityQueue<Node> successors = node.successors();
+        PriorityQueue<Node> successors = currentNode.successors();
+        int i = 0;
         for (Node successor : successors) {
+            i++;
             if(!visitedNodes.contains(successor)){
-                path.add(successor);
                 visitedNodes.add(successor);
-                int t = search(path, g + 1, bound);
+                int t = search(successor, g + 1, bound);
                 if ( t == FOUND){
                     return FOUND;
                 }
                 if (t < min){
                     min = t;
                 }
-                path.pop();
                 visitedNodes.remove(successor);
-            }else{
-                //System.out.println(successor);
             }
         }
         return min;
