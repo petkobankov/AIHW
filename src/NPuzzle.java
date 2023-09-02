@@ -1,17 +1,17 @@
 import java.util.*;
 
 class Node {
-    int[][] matrix;
+    int[] matrix;
     int distance = 0;
     int zeroX;
     int zeroY;
     String pathToTheNode;
     int manhattanDistance;
 
-    public Node(Node other, int newZeroX, int newZeroY, String moveDirection, int[][] baseMatrix){
+    public Node(Node other, int newZeroX, int newZeroY, String moveDirection, int[] baseMatrix){
         this.matrix = baseMatrix;
-        matrix[other.zeroX][other.zeroY] = matrix[newZeroX][newZeroY];
-        matrix[newZeroX][newZeroY] = 0;
+        matrix[Hw1.twoDtoOneD(other.zeroX,other.zeroY)] = matrix[Hw1.twoDtoOneD(newZeroX, newZeroY)];
+        matrix[Hw1.twoDtoOneD(newZeroX, newZeroY)] = 0;
         int manhattan1 = getManhattanDistanceCell(other.zeroX,other.zeroY);
         int manhattan2 = getManhattanDistanceCell(newZeroX,newZeroY);
         int otherManhattan1 = other.getManhattanDistanceCell(other.zeroX,other.zeroY);
@@ -24,11 +24,11 @@ class Node {
         this.pathToTheNode += ", " + moveDirection;
     }
 
-    public Node(int[][] startingMatrix, int zeroX, int zeroY, String pathToTheNode){
-        this.matrix = new int[Hw1.MATRIX_DIMENSION][Hw1.MATRIX_DIMENSION];
+    public Node(int[] startingMatrix, int zeroX, int zeroY, String pathToTheNode){
+        this.matrix = new int[Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION];
         for (int i = 0; i < Hw1.MATRIX_DIMENSION; i++){
             for (int j = 0; j < Hw1.MATRIX_DIMENSION; j++){
-                this.matrix[i][j] = startingMatrix[i][j];
+                this.matrix[Hw1.twoDtoOneD(i,j)] = startingMatrix[Hw1.twoDtoOneD(i,j)];
             }
         }
         this.manhattanDistance = getManhattanDistance();
@@ -41,7 +41,7 @@ class Node {
         int sum = 0;
         for (int i = 0; i < Hw1.MATRIX_DIMENSION; i++) {
             for (int j = 0; j < Hw1.MATRIX_DIMENSION; j++) {
-                int value = matrix[i][j];
+                int value = matrix[Hw1.twoDtoOneD(i,j)];
                 int targetRow = (value - 1) / Hw1.MATRIX_DIMENSION;
                 int targetCol = (value - 1) % Hw1.MATRIX_DIMENSION;
                 if(value==0){
@@ -56,7 +56,7 @@ class Node {
     }
 
     private int getManhattanDistanceCell(int row, int column) {
-        int value = matrix[row][column];
+        int value = matrix[Hw1.twoDtoOneD(row,column)];
         int targetRow = (value - 1) / Hw1.MATRIX_DIMENSION;
         int targetCol = (value - 1) % Hw1.MATRIX_DIMENSION;
         if(value==0){
@@ -80,10 +80,8 @@ class Node {
             int newZeroX = zeroX + directions[i][0];
             int newZeroY = zeroY + directions[i][1];
             if (Hw1.isPosValid(newZeroX, newZeroY)) {
-                int[][] successorMatrix = new int[Hw1.MATRIX_DIMENSION][Hw1.MATRIX_DIMENSION];
-                for (int row = 0; row < Hw1.MATRIX_DIMENSION; row++) {
-                    System.arraycopy(matrix[row], 0, successorMatrix[row], 0, Hw1.MATRIX_DIMENSION);
-                }
+                int[] successorMatrix = new int[Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION];
+                System.arraycopy(matrix, 0, successorMatrix, 0, Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION);
                 String moveDirection = Hw1.getMoveDirection(directions[i]);
                 Node successor = new Node(this,newZeroX,newZeroY,moveDirection,successorMatrix);
                 priorityQueue.offer(successor);
@@ -93,7 +91,7 @@ class Node {
     }
     @Override
     public int hashCode() {
-        return Arrays.deepHashCode(matrix);
+        return Arrays.hashCode(matrix);
     }
 
     @Override
@@ -105,7 +103,7 @@ class Node {
             return false;
         }
         Node other = (Node) obj;
-        return Arrays.deepEquals(this.matrix, other.matrix);
+        return Arrays.equals(this.matrix, other.matrix);
     }
 }
 
@@ -122,13 +120,13 @@ class Hw1 {
         N = sc.nextInt() + 1;
         int zeroPosition = sc.nextInt();
         MATRIX_DIMENSION = (int) Math.sqrt(N);
-        int[][] startingNodeMatrix = new int[Hw1.MATRIX_DIMENSION][Hw1.MATRIX_DIMENSION];
+        int[] startingNodeMatrix = new int[Hw1.MATRIX_DIMENSION*Hw1.MATRIX_DIMENSION];
         board = new int[N];
         for (int i = 0; i < N; i++) {
             int currentPuzzleNumber = sc.nextInt();
-            int row = oneDtoTwoD(i)[0];
-            int col = oneDtoTwoD(i)[1];
-            startingNodeMatrix[row][col] = currentPuzzleNumber;
+//            int row = oneDtoTwoD(i)[0];
+//            int col = oneDtoTwoD(i)[1];
+            startingNodeMatrix[i] = currentPuzzleNumber;
             board[i] = currentPuzzleNumber;
         }
         startingNode = new Node(startingNodeMatrix,oneDtoTwoD(N-1)[0], oneDtoTwoD(N-1)[1], "");
@@ -138,12 +136,17 @@ class Hw1 {
         }
     }
 
-    private int[] oneDtoTwoD(int position) {
+    public static int[] oneDtoTwoD(int position) {
         int[] twoDPosition = new int[2];
-        twoDPosition[0] = position / MATRIX_DIMENSION;
-        twoDPosition[1] = position % MATRIX_DIMENSION;
+        twoDPosition[1] = position % MATRIX_DIMENSION; //column
+        twoDPosition[0] = position / MATRIX_DIMENSION; //row
         return twoDPosition;
     }
+
+    public static int twoDtoOneD(int row, int column) {
+        return row * MATRIX_DIMENSION + column;
+    }
+
 
     public Node ida_star() {
         int bound = startingNode.manhattanDistance;
@@ -168,7 +171,7 @@ class Hw1 {
         if (f > bound) {
             return f;
         }
-        if (isGoal(node)) {
+        if (node.manhattanDistance==0) {
             return FOUND;
         }
         int min = Integer.MAX_VALUE;
@@ -195,18 +198,18 @@ class Hw1 {
 
 
 
-    private boolean isGoal(Node node) {
-        int goalValue = 1;
-        for (int i = 0; i < MATRIX_DIMENSION; i++) {
-            for (int j = 0; j < MATRIX_DIMENSION; j++) {
-                if (node.matrix[i][j] != goalValue % (MATRIX_DIMENSION * MATRIX_DIMENSION)) {
-                    return false;
-                }
-                goalValue++;
-            }
-        }
-        return true;
-    }
+//    private boolean isGoal(Node node) {
+//            int goalValue = 1;
+//            for (int i = 0; i < MATRIX_DIMENSION; i++) {
+//                for (int j = 0; j < MATRIX_DIMENSION; j++) {
+//                    if (node.matrix[i][j] != goalValue % (MATRIX_DIMENSION * MATRIX_DIMENSION)) {
+//                        return false;
+//                    }
+//                    goalValue++;
+//                }
+//            }
+//            return true;
+//    }
 
     public static boolean isPosValid(int row, int col) {
         return row >= 0 && row < MATRIX_DIMENSION && col >= 0 && col < MATRIX_DIMENSION;
